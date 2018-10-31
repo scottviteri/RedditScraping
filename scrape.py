@@ -3,14 +3,23 @@ import time
 import csv
 from bs4 import BeautifulSoup
 
-subreddit_name = "science"
-num_posts_desired = 40 
+subreddit_name = "datascience" #"science"
+num_posts_desired = 100
 
-def getNextPage(soup):
+def getNextPage(soup, num_posts):
     next_button = soup.find("span", class_="next-button")
+    if not next_button: #if cannot get next_button, just pattern match on the url
+        print "Next button not found"
+        guessed_url = "https://old.reddit.com/r/" \
+                        + subreddit_name + "/?count=" \
+                        + str(num_posts) + "&after=t3_9opdvw"
+        return requests.get(guessed_url, headers={'User-Agent': 'Mozilla/5.0'})
     next_page_link = next_button.find("a").attrs['href']
-    time.sleep(1)
+    time.sleep(1) #avoid spamming reddit's servers
     return requests.get(next_page_link, headers={'User-Agent': 'Mozilla/5.0'})
+
+def removeDuplicates(lst):
+    return [x for x in lst if lst.count(x)==1]
 
 def scrapePosts(url, num_posts_desired):
     posts = []
@@ -18,11 +27,12 @@ def scrapePosts(url, num_posts_desired):
     while len(posts) < num_posts_desired:
         soup = BeautifulSoup(page.text, 'html.parser')
         if len(posts) != 0:
-            page = getNextPage(soup)    
+            page = getNextPage(soup, len(posts))    
+        print(len(posts))
         posts_including_promoted = soup.find_all("div", class_="thing")
         non_promotion_posts = filter(lambda post : 'promoted' not in post.get("class"), posts_including_promoted)
         posts.extend(non_promotion_posts)
-    return posts[:num_posts_desired]
+    return removeDuplicates(posts)[:num_posts_desired]
 
 def checkInbound(post):
     ## Make sure that post is local to the current subreddit
@@ -35,10 +45,13 @@ def checkInbound(post):
 
 url = "https://old.reddit.com/r/"+subreddit_name+"/"
 posts = scrapePosts(url, num_posts_desired)
-#inbound_posts = filter(checkInbound, posts)
+#inbound_posts = filter(checkInbound, posts) #optional filter
 inbound_posts = posts[::]
 titles = map(lambda post : post.find('p', class_="title").text.encode('utf-8'), inbound_posts)
-authors = map(lambda post : post.find('a', class_="author").text.encode('utf-8'), inbound_posts)
+authors = map(
+            lambda post : post.find('a', class_="author").text.encode('utf-8') \
+                            if post.find('a', class_="author") else "Deleted", 
+            inbound_posts)
 num_comments_strings = map(lambda post : post.find('a', class_="comments").text, inbound_posts)
 
 def convertCommentCountStringToNum(num_comments_string):
