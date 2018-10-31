@@ -5,6 +5,7 @@ The main changes that I made were:
  - Made the script robust to addition of promotional content on the Subreddit
  - Give user easy control over number of posts rather than number of pages 
  - Other organizational changes to the structure of the code
+ - Various small additions for robustness across different subreddits
 
 To run the software: 
  1. install nix by running `curl https://nixos.org/nix/install | sh`
